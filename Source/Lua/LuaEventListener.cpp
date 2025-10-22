@@ -125,6 +125,12 @@ void LuaEventListener::ProcessEvent(Event& event)
 	lua_State* L = Interpreter::GetLuaState();
 	int top = lua_gettop(L);
 
+	// Store the current document in Lua registry so nested function calls can access it
+	if (owner_document) {
+		LuaType<Document>::push(L, owner_document, false);
+		lua_setfield(L, LUA_REGISTRYINDEX, "_owner_document");
+	}
+
 	// push the arguments
 	lua_getglobal(L, "EVENTLISTENERFUNCTIONS");
 	lua_rawgeti(L, -1, luaFuncRef);
@@ -133,6 +139,10 @@ void LuaEventListener::ProcessEvent(Event& event)
 	LuaType<Document>::push(L, owner_document, false);
 
 	Interpreter::ExecuteCall(3, 0); // call the function at the top of the stack with 3 arguments
+
+	// Clear the registry entry after event handling is complete
+	lua_pushnil(L);
+	lua_setfield(L, LUA_REGISTRYINDEX, "_owner_document");
 
 	lua_settop(L, top);             // balanced stack makes Lua happy
 }
